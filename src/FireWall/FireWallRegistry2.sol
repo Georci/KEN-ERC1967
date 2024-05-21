@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import {IModule} from "./IModule.sol";
 import {Test, console} from "forge-std/Test.sol";
 
-contract FireWallRegistry {
+contract FireWallRegistry2 {
     mapping(address => ProtectInfo[]) public project_registry;
     mapping(address => address) public managers;
     address[] detect_modules;
@@ -19,7 +19,6 @@ contract FireWallRegistry {
         bool[] mod_flag;
     }
 
-    // 这个constructor和下面凡是涉及到的持久数据存取的几个函数全部都要考虑加到代理合约中
     // constructor(address[] memory _detect_modules) {
     //     owner = msg.sender;
     //     detect_modules = _detect_modules;
@@ -53,6 +52,7 @@ contract FireWallRegistry {
     }
 
     function module_detect(address _tx_sender, address _project, bytes memory _data) external returns (bool CallSuccess) {
+        
         ProtectInfo[] memory infos = project_registry[_project];
         for (uint256 i = 0; i < infos.length; i++) {
             bool[] memory mod_flag = infos[i].mod_flag;
@@ -67,16 +67,21 @@ contract FireWallRegistry {
         // return true;
         // 检测通过，可以调用目标项目
         CallSuccess = onCall(_project, _data);
+        UpgradeInfo();
     }
 
     function getRegistryInfo(address _project) public view returns (ProtectInfo[] memory) {
         return project_registry[_project];
     }
 
-
     function onCall(address _project, bytes memory data) internal returns (bool){
         (bool success,) = _project.call(data);
         require(success, "FireWall:call failed");
         return true;
+    }
+
+    // 因为目前想不到升级后的模块比升级前的多了哪些功能，便随意举一个例子
+    function UpgradeInfo() internal{
+        require(1==0,"Upgrade Successful !!!");
     }
 }

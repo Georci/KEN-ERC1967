@@ -8,6 +8,7 @@ import "../src/FireWall/ParamIntercept.sol";
 contract FireWallRouterTest is Test {
     address attacker = vm.addr(10);
     address deployer = vm.addr(1);
+    address newOwner = vm.addr(3);
     address projectManager = vm.addr(2);
     FireWallRouter router;
     FireWallRegistry registry;
@@ -22,7 +23,8 @@ contract FireWallRouterTest is Test {
         modules[0] = address(module1);
         modules[1] = address(module2);
         // 部署合约
-        registry = new FireWallRegistry(modules);
+        // registry = new FireWallRegistry(modules);
+        registry = new FireWallRegistry();
         router = new FireWallRouter(address(registry));
         vm.stopPrank();
         vm.prank(projectManager);
@@ -43,9 +45,9 @@ contract FireWallRouterTest is Test {
     }
 
     function test_detect() public {
-        vm.prank(attacker);
-        bytes memory data = abi.encodeWithSelector(target.protect_func.selector, 7);
+        vm.prank(newOwner);
+        bytes memory data = abi.encodeWithSelector(target.protect_func.selector, 11);
         bool result = router.onCall(address(target), data);
-        require(result);
+        require(result == false,"hasn't been attacked!");
     }
 }
