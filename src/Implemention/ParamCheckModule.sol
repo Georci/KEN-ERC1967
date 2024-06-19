@@ -136,4 +136,6 @@ contract ParamCheckModule is IModule {
         }
         return true;
     }
+
+    function setMode(bytes memory data) external virtual override {}
 }

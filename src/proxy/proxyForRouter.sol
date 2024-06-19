@@ -5,7 +5,6 @@ import "./ERC1967Proxy.sol";
 import "./ProxyAdmin.sol";
 
 contract ProxyForRouter is ERC1967Proxy {
-
     constructor(
         address _logic,
         address admin_,
@@ -23,9 +22,9 @@ contract ProxyForRouter is ERC1967Proxy {
     }
 
     // 这里的data有没有可能不需要
-    // 明天再整理一下整个框架，把使用ProxyAdmin的代码单独整理一下
+    // 调用防火墙的方法：1.CallOn 2.硬编码
     function CallOn(bytes memory _data) external {
-        _fallback();
+        _fallbackCallOn();
     }
 
     /**

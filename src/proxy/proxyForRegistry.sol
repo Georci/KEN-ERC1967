@@ -20,7 +20,7 @@ contract ProxyForRegistry is ERC1967Proxy {
     }
 
     function CallOn(bytes memory _data) external {
-        _fallback();
+        _fallbackCallOn();
     }
 
     /**

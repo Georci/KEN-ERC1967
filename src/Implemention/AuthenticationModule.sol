@@ -6,6 +6,7 @@ import {IModule} from "./IModule.sol";
 contract AuthModule is IModule {
     // 黑名单 项目地址 => 函数选择器 => 黑名单
     mapping(address => mapping(bytes4 => address[])) functionAccessBlacklist;
+    // 全局黑名单 -> 项目方设计
     address manager;
     address router;
     address registry;
@@ -14,7 +15,10 @@ contract AuthModule is IModule {
     // 检查权限修饰符
     modifier check() {
         require(
-            msg.sender == router || msg.sender == registry || msg.sender == manager, "ParamModule:permission denied"
+            msg.sender == router ||
+                msg.sender == registry ||
+                msg.sender == manager,
+            "ParamModule:permission denied"
         );
         _;
     }
@@ -28,7 +32,7 @@ contract AuthModule is IModule {
     event RemoveBlackAddr(address project, address blackAddr);
 
     // 与代理直接进行交互
-    constructor(address _routerProxy, address _registryProxy) {   
+    constructor(address _routerProxy, address _registryProxy) {
         router = _routerProxy;
         registry = _registryProxy;
         manager = msg.sender;
@@ -42,7 +46,10 @@ contract AuthModule is IModule {
      */
     function setInfo(bytes memory data) external override check {
         // 添加
-        (bytes4 funcSig, address project, address blackAddr) = abi.decode(data, (bytes4, address, address));
+        (bytes4 funcSig, address project, address blackAddr) = abi.decode(
+            data,
+            (bytes4, address, address)
+        );
         functionAccessBlacklist[project][funcSig].push(blackAddr);
         emit AddBlackAddr(project, blackAddr);
     }
@@ -53,7 +60,10 @@ contract AuthModule is IModule {
      */
     function removeInfo(bytes memory data) external override check {
         // 移除
-        (bytes4 funcSig, address project, address blackAddr) = abi.decode(data, (bytes4, address, address));
+        (bytes4 funcSig, address project, address blackAddr) = abi.decode(
+            data,
+            (bytes4, address, address)
+        );
         address[] memory blackList = functionAccessBlacklist[project][funcSig];
         for (uint64 i = 0; i < blackList.length; i++) {
             if (blackList[i] == blackAddr) {
@@ -73,8 +83,14 @@ contract AuthModule is IModule {
      * @param data 函数调用数据
      * @return 是否允许访问
      */
-    function detect(address project, string[] memory args, bytes memory data) external override returns (bool) {
-        address[] memory blackList = functionAccessBlacklist[project][bytes4(data)];
+    function detect(
+        address project,
+        string[] memory args,
+        bytes memory data
+    ) external override returns (bool) {
+        address[] memory blackList = functionAccessBlacklist[project][
+            bytes4(data)
+        ];
         for (uint256 i = 0; i < blackList.length; i++) {
             if (blackList[i] == tx.origin) {
                 emit BlackAddrAccess(project, tx.origin);
@@ -83,4 +99,6 @@ contract AuthModule is IModule {
         }
         return true;
     }
+
+    function setMode(bytes memory data) external virtual override {}
 }
