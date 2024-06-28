@@ -22,7 +22,20 @@ contract TestContract {
         );
         router.CallOn(data);
 
-        if (a <= 100) {
+        if (a >= 100) {
+            is_attack = true;
+            console.log("Attack successful");
+        }
+    }
+
+    function test_Attack(uint256 a) public  {
+        bytes memory data = abi.encodeWithSignature(
+            "executeWithDetect(bytes)",
+            msg.data
+        );
+        router.CallOn(data);
+
+        if (a >= 100) {
             is_attack = true;
             console.log("Attack successful");
         }

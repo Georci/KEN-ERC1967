@@ -2,12 +2,15 @@
 pragma solidity ^0.8.20;
 
 import "./IModule.sol";
-import {Test, console} from "forge-std/Test.sol";
+import "./IAuthenicationModule.sol";
+import {Test, console} from "../../lib/forge-std/src/Test.sol";
 
 /**
  * @title FireWallRegistry
  * @dev 用于保护函数和管理模块的注册表合约。
  */
+
+// TODO:已经注册项目没有保存？
 contract FireWallRegistry {
     // 注册表的管理者
     address owner;
@@ -64,6 +67,7 @@ contract FireWallRegistry {
     event RemoveModule(string module_description, address module_address);
     event pauseProjectInteract(address project);
     event pasueProjectFunctionInteract(address project, bytes4 funcSig);
+    event BatchSetInfo(address module_address);
 
 
     /**
@@ -74,6 +78,7 @@ contract FireWallRegistry {
      * @param params 参数列表。
      * @param enableModules 启用的模块列表。
      */
+    // TODO:这个地方现在有点问题：我感觉注册不应该注册的是函数，而应该是项目
     function register(
         address project,
         address manager,
@@ -88,8 +93,27 @@ contract FireWallRegistry {
         emit RegisterInfo(project, funcSig, manager, params, enableModules);
     }
 
-    // =============================查询=============================
 
+    /**
+     * @dev 为单个项目注册多个函数信息
+     * @param project 项目地址。
+     * @param manager 管理者地址。
+     * @param funcSig 函数选择器。
+     * @param params 参数列表。
+     * @param enableModules 启用的模块列表。
+     */
+    // TODO:完善批量注册
+    function batchRegister(
+        address project,
+        address manager,
+        bytes4[] calldata funcSig,
+        string[][] memory params,
+        address[] memory enableModules
+    ) external {
+
+    }
+
+    // =============================查询=============================
     /**
      * @dev 获取受保护函数的信息。
      * @param project 项目地址。
@@ -125,19 +149,25 @@ contract FireWallRegistry {
      * @param module_address 模块地址。
      * @param data 模块信息。
      */
-    function updataModuleInfo(address module_address, bytes memory data) external {
+    // TODO:考虑增加权限访问，只有owner、manager可以调用module中的函数
+    function updataModuleInfo(
+        address module_address,
+        bytes memory data
+    ) external {
         // 设置模块信息
         IModule(module_address).setInfo(data);
         // 释放事件
         emit UpdateModuleInfo(moduleNames[module_address]);
     }
 
+
     /**
      * @dev 删除模块的信息。
      * @param module_address 模块地址。
      * @param data 模块信息。
      */
-    function removeModuleInfo(address module_address, bytes memory data) external onlyOwner {
+    // TODO:这个函数本来是防火墙的owner用来移除对应的模块信息，但是我现在将其用来作为移除黑名单信息的入口，所以这里可能需要拆分一下
+    function removeModuleInfo(address module_address, bytes memory data) external {
         // 设置模块信息，只有owner、router、模块管理员可以调用
         IModule(module_address).removeInfo(data);
         // 释放事件
@@ -312,6 +342,13 @@ contract FireWallRegistry {
     ///@param _owner The address of owner
     function initialize(address _owner) external {
         owner = _owner;
+    }
+
+
+    // =============================Authentication==================================
+    function batchSetInfo(address module_address, bytes memory data) external {
+        IAuthenicationModule(module_address).batchSetInfo(data);
+        emit BatchSetInfo(module_address);
     }
 
 }
