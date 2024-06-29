@@ -112,6 +112,16 @@ contract uintTest is Test {
             enableModules
         );
         proxyForRegistry.CallOn(registryData);
+
+        bytes memory registryData2 = abi.encodeWithSignature(
+            "register(address,address,bytes4,string[],address[])",
+            address(testContract),
+            deployer,
+            testContract.test_Attack.selector,
+            params,
+            enableModules
+        );
+        proxyForRegistry.CallOn(registryData2);
         vm.stopPrank();
         //黑名单拦截1
         bytes memory auth_data = abi.encode(
@@ -133,10 +143,10 @@ contract uintTest is Test {
         //黑名单拦截2
         bytes memory auth_data2 = abi.encode(
             address(testContract),
-            true,
+            false,
             testContract.test_Attack.selector,
             black,
-            true,
+            false,
             false
         );
         bytes memory authUpdateData2 = abi.encodeWithSignature(
@@ -152,8 +162,8 @@ contract uintTest is Test {
             address(testContract),
             testContract.test_attack.selector,
             0,
-            0,
             100,
+            0,
             true
         );
         bytes memory paramUpdataData = abi.encodeWithSignature(
@@ -176,8 +186,7 @@ contract uintTest is Test {
         testContract.test_Attack(101);
     }
 
-    //TODO:测试一下register，测试一下1.黑名单模块批量上传 3.参数模块连续值和离散值的区别
-
+    //TODO:测试一下register，测试一下 3.参数模块连续值和离散值的区别
     function testRemoveBlackList() public {
         bytes memory removeAuthdata = abi.encode(
             address(testContract),
@@ -196,7 +205,58 @@ contract uintTest is Test {
         testContract.test_attack(101);
     }
 
+    // TODO:测试了批量上传，但是感觉项目还得一个个注册register，一个个updateModule，挺难用的
     function testBatchUploadBlack() public {
-        bytes memory 
+        // vm.prank(black, black);
+        // testContract.test_Attack(101);
+
+        address black1 = vm.addr(10);
+        address black2 = vm.addr(11);
+        bytes memory batchSetData = abi.encode(
+            address(testContract),
+            0x40,
+            0x02,
+            black1,
+            black2
+        );
+        bytes memory batchSetInfoData = abi.encodeWithSignature(
+            "batchSetInfo(address,bytes)",
+            address(authModule),
+            batchSetData
+        );
+
+        vm.prank(auth_manager);
+        proxyForRegistry.CallOn(batchSetInfoData);
+        // vm.prank(black1, black1);
+        // testContract.test_Attack(101);
+        vm.prank(black2, black2);
+        testContract.test_Attack(101);
+    }
+
+
+    function testContinusAndDiscreteParam() public{
+        // 离散
+        // vm.prank(deployer, deployer);
+        // testContract.test_attack(100);
+
+        // 范围
+        bytes memory data = abi.encode(
+            address(testContract),
+            testContract.test_attack.selector,
+            0,
+            20,
+            50,
+            false
+        );
+        bytes memory paramUpdataData = abi.encodeWithSignature(
+            "updataModuleInfo(address,bytes)",
+            address(paramModule),
+            data
+        );
+        vm.prank(deployer);
+        proxyForRegistry.CallOn(paramUpdataData);
+
+        vm.prank(deployer, deployer);
+        testContract.test_attack(35);
     }
 }

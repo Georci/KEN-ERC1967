@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import {FireWallRegistry} from "./Registry.sol";
 import {Test, console} from "../../lib/forge-std/src/Test.sol";
 
-
 contract ParamCheckModule {
     // 改结构体用来存储范围型拦截参数
     struct ParamRange {
@@ -16,6 +15,8 @@ contract ParamCheckModule {
 
     // 项目地址 => 函数 => 参数位置 => 参数范围
     mapping(address => mapping(bytes4 => mapping(uint64 => ParamRange))) paramRanges;
+    // 参数是否注册
+    mapping(address => mapping(bytes4 => mapping(uint64 => bool))) isRegister;
     address router;
     address manager;
     address registry;
@@ -81,6 +82,7 @@ contract ParamCheckModule {
             paramRanges[project][sig][index].rangeBlackParam[min] = max;
             paramRanges[project][sig][index].rangeStart.push(min);
         }
+        isRegister[project][sig][index] = true;
         emit setParamRange(project, sig, index, min, max);
     }
 
@@ -145,12 +147,11 @@ contract ParamCheckModule {
         );
         // 参数长度不匹配
         require(data.length == args.length * 32 + 4, "error data length");
-        // 遍历
+        // 遍历当前函数的全部参数
         for (uint64 i = 0; i < args.length; i++) {
-            // 获取每个参数的范围
             ParamRange storage range = paramRanges[project][bytes4(data)][i];
-            // 未注册的参数
-            if (range.rangeStart.length == 0) {
+            // 判断当前参数是否注册
+            if (isRegister[project][bytes4(data)][i] == false) {
                 continue;
             }
             // 仅支持uint256
@@ -160,7 +161,11 @@ contract ParamCheckModule {
                 assembly {
                     temp := mload(add(data, add(4, mul(add(i, 1), 32))))
                 }
+                
                 uint256 value = uint256(temp);
+                console.log("========================================");
+                console.log("The param is:",value);
+                console.log("========================================");
                 // 离散参数
                 uint256 arrayIndex = value / 256;
                 uint256 bitPosition = value % 256;
@@ -171,8 +176,8 @@ contract ParamCheckModule {
                 }
                 // 范围参数
                 for (uint64 j; j < range.rangeStart.length; j++) {
-                    uint256 maxValue = range.rangeBlackParam[j];
                     uint256 minValue = range.rangeStart[j];
+                    uint256 maxValue = range.rangeBlackParam[minValue];
                     if (value >= minValue && value <= maxValue) {
                         emit errorParam(project, bytes4(data), i, value);
                         revert("detect:error param");

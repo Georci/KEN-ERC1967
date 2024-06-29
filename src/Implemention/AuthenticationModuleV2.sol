@@ -163,7 +163,6 @@ contract AuthModule {
                 revert("detect:black address access Function forbidden");
             }
 
-            console.log("wuxizhi1 zhende1shuai");
             if (globalAccessBlacklist[project][tx.origin] == true) {
                 emit BlackAddrAccess(project, tx.origin);
                 revert("detect:black address access Global forbidden");
