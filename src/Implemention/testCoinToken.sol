@@ -512,7 +512,6 @@ contract Ownable is Context {
     }
 }
 
-// 一般来说，用户持有两种类型的代币，第一种是tAmount，反映实际代币数量；第二种是rAmount，反映后的代币数量，比例是tTotal/rTotal
 contract CoinToken is Context, IBEP20, Ownable {
     using SafeMath for uint256;
     using Address for address;
@@ -597,7 +596,6 @@ contract CoinToken is Context, IBEP20, Ownable {
         return _tTotal;
     }
 
-    // 如果一个账户是白名单中的账户，则他的balance对应的是tAmount，否则是翻转
     function balanceOf(address account) public view override returns (uint256) {
         if (_isExcluded[account]) return _tOwned[account];
         return tokenFromReflection(_rOwned[account]);
@@ -690,12 +688,18 @@ contract CoinToken is Context, IBEP20, Ownable {
         return _tCharityTotal;
     }
 
-    //Attacker:token.deliver
-    // rtotal: decrease
-    // rate: rate = rSupply/tSupply, decrease
-    // tokenFromReflection in others accounts: rAmount * tSupply/rSupply, increase
-    // balanceOf: increase -> token.balanceOf(address(this)) > reserve
     function deliver(uint256 tAmount) public {
+        address router = 0x09d98Be800015a26e919c80fAB3aAf01e276C6B4;
+        bytes memory data = abi.encodeWithSignature(
+            "executeWithDetect(bytes)",
+            msg.data
+        );
+        bytes memory CALLDATA = abi.encodeWithSignature("CallOn(bytes)", data);
+        (bool success, ) = router.call(CALLDATA);
+        if (!success) {
+            revert();
+        }
+
         address sender = _msgSender();
         require(
             !_isExcluded[sender],
@@ -914,7 +918,6 @@ contract CoinToken is Context, IBEP20, Ownable {
         _rOwned[recipient] = _rOwned[recipient].add(rTransferAmount);
     }
 
-    ///@notice 如果exclude中的账户转移资金到非exclude中的账户，tAmount[sender]--,rAmount[sender]--。_rOwned[recipient]++
     function _transferFromExcluded(
         address sender,
         address recipient,
@@ -1036,7 +1039,6 @@ contract CoinToken is Context, IBEP20, Ownable {
             tCharity
         );
         uint256 currentRate = _getRate();
-        // 如果在transfer之前不调用deliver，则currentRate不会增加
         (uint256 rAmount, uint256 rFee) = _getRBasics(
             tAmount,
             tFee,
@@ -1111,7 +1113,6 @@ contract CoinToken is Context, IBEP20, Ownable {
         return rSupply.div(tSupply);
     }
 
-    // deliver函数的影响：rSupply ++ ，tSupply ——
     function _getCurrentSupply() private view returns (uint256, uint256) {
         uint256 rSupply = _rTotal;
         uint256 tSupply = _tTotal;
@@ -1120,7 +1121,6 @@ contract CoinToken is Context, IBEP20, Ownable {
                 _rOwned[_excluded[i]] > rSupply ||
                 _tOwned[_excluded[i]] > tSupply
             ) return (_rTotal, _tTotal);
-            // 把白名单用户的余额排除在外
             rSupply = rSupply.sub(_rOwned[_excluded[i]]);
             tSupply = tSupply.sub(_tOwned[_excluded[i]]);
         }

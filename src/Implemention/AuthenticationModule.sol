@@ -106,7 +106,6 @@ contract AuthModule {
      */
     // TODO:有点想不出来怎样处理isFuctionAccessBlacklist == true, 但是没对地址使用函数防护的情况
     function batchSetInfo(bytes memory data) external check {
-        console.logBytes(data);
         (address project, address[] memory blackAddr) = abi.decode(
             data,
             (address, address[])

