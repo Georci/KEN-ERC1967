@@ -225,21 +225,38 @@ contract TestFireWallThroughOnChainAttack is Test {
         proxyForRegistry.CallOn(registryData);
         vm.stopPrank();
         //黑名单拦截1
-        bytes memory auth_data = abi.encode(
+        // bytes memory auth_data = abi.encode(
+        //     address(bevo),
+        //     true,
+        //     bevo.deliver.selector,
+        //     address(this),
+        //     true,
+        //     true
+        // );
+        // bytes memory authUpdateData = abi.encodeWithSignature(
+        //     "updataModuleInfo(address,bytes)",
+        //     address(authModule),
+        //     auth_data
+        // );
+        // vm.prank(deployer);
+        // proxyForRegistry.CallOn(authUpdateData);
+
+        //参数拦截
+        bytes memory data = abi.encode(
             address(bevo),
-            true,
             bevo.deliver.selector,
-            address(this),
-            true,
+            0,
+            3028267986646483922,
+            3028267986646483924,
             false
         );
-        bytes memory authUpdateData = abi.encodeWithSignature(
+        bytes memory paramUpdataData = abi.encodeWithSignature(
             "updataModuleInfo(address,bytes)",
-            address(authModule),
-            auth_data
+            address(paramModule),
+            data
         );
         vm.prank(deployer);
-        proxyForRegistry.CallOn(authUpdateData);
+        proxyForRegistry.CallOn(paramUpdataData);
 
        console.log("=============================================");
        console.log("start attack");
@@ -265,21 +282,5 @@ contract TestFireWallThroughOnChainAttack is Test {
             18
         );
 
-        //参数拦截
-        // bytes memory data = abi.encode(
-        //     address(testContract),
-        //     testContract.test_attack.selector,
-        //     0,
-        //     100,
-        //     0,
-        //     true
-        // );
-        // bytes memory paramUpdataData = abi.encodeWithSignature(
-        //     "updataModuleInfo(address,bytes)",
-        //     address(paramModule),
-        //     data
-        // );
-        // vm.prank(deployer);
-        // proxyForRegistry.CallOn(paramUpdataData);
     }
 }
